@@ -1,6 +1,8 @@
 package com.sparta.payment.service;
 
 import com.sparta.payment.dto.PaymentDto;
+import com.sparta.payment.entity.Product;
+import com.sparta.payment.entity.ProductRepository;
 import com.sparta.payment.infra.PgClient;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
@@ -12,12 +14,24 @@ import java.util.UUID;
 public class PaymentFacade {
     private final PgClient pgClient;
     private final PaymentTransactionService txService;
+    private final ProductRepository productRepository;
 
     public PaymentDto.PaymentReadyResponse preparePayment(PaymentDto.OrderRequest request) {
+        Product product = productRepository.findById(request.getProductId())
+                .orElseThrow(() -> new IllegalArgumentException("해당 상품이 없습니다."));
+
         String merchantUid = "PAY-" + UUID.randomUUID().toString();
-        Long calculatedAmount = 100L * request.getQuantity(); // 임시 로직
+
+        Long calculatedAmount = product.getPrice() * request.getQuantity();
+
         txService.savePendingPayment(merchantUid, calculatedAmount);
-        return new PaymentDto.PaymentReadyResponse(merchantUid, calculatedAmount, "스프링 부트 마스터 강의");
+
+        return new PaymentDto.PaymentReadyResponse(merchantUid, calculatedAmount, product.getName());
+
+//        String merchantUid = "PAY-" + UUID.randomUUID().toString();
+//        Long calculatedAmount = 100L * request.getQuantity(); // 임시 로직
+//        txService.savePendingPayment(merchantUid, calculatedAmount);
+//        return new PaymentDto.PaymentReadyResponse(merchantUid, calculatedAmount, "스프링 부트 마스터 강의");
     }
 
     // 🚨 여기서 모든 검증이 이루어집니다 (프론트 Confirm, 웹훅 모두 이곳을 거침)
